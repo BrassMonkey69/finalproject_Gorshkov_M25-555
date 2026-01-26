@@ -1,0 +1,6 @@
+{
+  "BTC_USD": {"rate": 59300.0, "updated_at": "2025-10-09T10:30:00"},
+  "EUR_USD": {"rate": 1.0786, "updated_at": "2025-10-09T10:31:00"},
+  "USD_EUR": {"rate": 0.9271, "updated_at": "2025-10-09T10:32:00"},
+  "BTC_EUR": {"rate": 55149.0, "updated_at": "2025-10-09T10:33:00"}
+}

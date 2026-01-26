@@ -1,0 +1,5 @@
+/.venv
+get-pip.py
+/myenv
+/.ruff_cache
+/labyrinth_game/__pycache__

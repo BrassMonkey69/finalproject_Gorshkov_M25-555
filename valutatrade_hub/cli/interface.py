@@ -3,6 +3,7 @@ import json
 import sys
 import hashlib
 import time
+from typing import Optional
 from datetime import datetime, timedelta
 from core.models import User, Portfolio
 from core.usecases import (
@@ -13,8 +14,34 @@ from core.usecases import (
     sell_currency,
     get_rate
 )
+from core.exceptions import (
+    InsufficientFundsError,
+    CurrencyNotFoundError,
+    ApiRequestError
+)
+from core.currencies import get_currency
 
-
+def handle_cli_exception(exc: Exception, command: str):
+    """
+    Централизованная обработка исключений для CLI.
+    Выводит пользовательские сообщения и завершает выполнение.
+    """
+    if isinstance(exc, InsufficientFundsError):
+        print(str(exc))  # Сообщение как есть
+    elif isinstance(exc, CurrencyNotFoundError):
+        print(str(exc))
+        print("Используйте `get-rate --help` для списка поддерживаемых валют.")
+        # Или: показать список из реестра (если доступен)
+        # print("Поддерживаемые валюты: USD, EUR, BTC, ETH")
+    elif isinstance(exc, ApiRequestError):
+        print(str(exc))
+        print("Попробуйте повторить запрос позже или проверьте подключение к сети.")
+    else:
+        # Неожиданные исключения
+        print(f"Непредвиденная ошибка в команде '{command}': {exc}")
+    
+    sys.exit(1)
+    
 def load_json(filepath: str) -> dict:
     """Загружает JSON‑файл. Если файла нет — возвращает пустой словарь."""
     try:
@@ -51,7 +78,7 @@ def fetch_rate_from_parser(from_curr: str, to_curr: str) -> Optional[dict]:
     - делает HTTP-запрос к API (CoinGecko, Binance и т. п.);
     - возвращает {"rate": float, "updated_at": iso_str} или None.
     """
-    # Пример заглушки (замените на реальный API-запрос)
+    # Пример заглушки (заменить на реальный API-запрос)
     mock_rates = {
         "USD_BTC": 0.00001685,
         "BTC_USD": 59337.21,
@@ -401,50 +428,38 @@ def main():
                 sys.exit(1)
                 
         elif args.command == "get-rate":
-            # Валидация аргументов
-            from_currency = args.from_currency.upper()
-            to_currency = args.to_currency.upper() 
-
-            if not from_currency or not to_currency:
-                print("Коды валют не могут быть пустыми")
-                sys.exit(1)
-
-            # Загружаем текущие курсы
-            rates_data = load_json("data/rates.json")
-
-            # Получаем курс (с возможной актуализацией)
             try:
-                rate_info = get_exchange_rate(
-                    rates_data=rates_data,
-                    from_curr=from_currency,
-                    to_curr=to_currency
-                )
-                if rate_info:
-                    rate = rate_info["rate"]
-                    updated_at = rate_info["updated_at"]
+                from_curr = args.from_currency.upper()
+                to_curr = args.to_currency.upper()
 
-                    # Вычисляем обратный курс (если не USD→USD)
-                    if from_currency != to_currency:
-                        inverse_rate = 1 / rate
-                    else:
-                        inverse_rate = 1.0
+                # Проверка на идентичность валют
+                if from_curr == to_curr:
+                    print(f"Курс {from_curr}→{to_curr}: 1.00000000 (фиксированный)")
+                    sys.exit(0)
 
-                    # Форматируем вывод
-                    print(f"Курс {from_currency}→{to_currency}: {rate:.8f} (обновлено: {updated_at})")
-                    if from_currency != to_currency:
-                        print(f"Обратный курс {to_currency}→{from_currency}: {inverse_rate:.2f}")
-                else:
-                    print(f"Курс {from_currency}→{to_currency} недоступен. Повторите попытку позже.")
+
+                # Проверка существования валют
+                get_currency(from_curr)
+                get_currency(to_curr)
+
+                # Получение курса
+                rate_info = get_exchange_rate(rates_data, from_curr, to_curr)
+                if not rate_info:
+                    print(f"Курс {from_curr}→{to_curr} недоступен. Попробуйте позже.")
                     sys.exit(1)
-            except Exception as e:
-                print(f"Ошибка при получении курса: {e}")
-                sys.exit(1)
+                
+                print(f"Курс {from_curr}→{to_curr}: {rate_info['rate']:.8f} (обновлено: {rate_info['updated_at']})")
+                
+                # Проверка наличия данных после загрузки
+                if not rates_data.get("rates"):
+                    print("Не удалось получить курсы валют: нет данных в кэше и недоступен API.")
+                    sys.exit(1)
 
+            except (CurrencyNotFoundError, ApiRequestError) as e:
+                handle_cli_exception(e, "get-rate")
     except Exception as e:
-        print(f"Ошибка: {e}")
-        sys.exit(1)
-
-
+        handle_cli_exception(e, "get-rate")
+                   
 
 if __name__ == "__main__":
     main()

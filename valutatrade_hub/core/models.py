@@ -2,7 +2,7 @@ import hashlib
 import json
 from datetime import datetime
 from typing import Optional
-
+from core.exceptions import InsufficientFundsError
 
 
 class User:
@@ -143,7 +143,11 @@ class Wallet:
         if not isinstance(amount, (int, float)) or amount <= 0:
             raise ValueError("Сумма снятия должна быть положительным числом.")
         if amount > self.balance:
-            return False  # Недостаточно средств
+            raise InsufficientFundsError(
+                available=self.balance,
+                required=amount,
+                code=self.currency_code
+            )
         self.balance -= amount
         return True
 

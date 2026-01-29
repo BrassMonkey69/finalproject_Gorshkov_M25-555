@@ -120,6 +120,130 @@ def get_exchange_rate(
 
     return None  # Курс недоступен
 
+current_user: User = None
+
+def register_command():
+    parser = argparse.ArgumentParser(description="Регистрация нового пользователя")
+    parser.add_argument("--username", type=str, required=True)
+    parser.add_argument("--password", type=str, required=True)
+    args = parser.parse_args(sys.argv[2:])
+    
+    try:
+        user = register_user(args.username, args.password)
+        print(f"Пользователь {user.username} успешно зарегистрирован (ID: {user.user_id})")
+    except UserAlreadyExistsError:
+        print(f"Ошибка: имя пользователя {args.username} уже занято")
+    except Exception as e:
+        print(f"Ошибка регистрации: {str(e)}")
+
+def login_command():
+    global current_user
+    parser = argparse.ArgumentParser(description="Вход в систему")
+    parser.add_argument("--username", type=str, required=True)
+    parser.add_argument("--password", type=str, required=True)
+    args = parser.parse_args(sys.argv[2:])
+    
+    try:
+        current_user = login_user(args.username, args.password)
+        print(f"Успешный вход как {current_user.username}")
+    except AuthenticationError:
+        print("Ошибка: неверный логин или пароль")
+    except Exception as e:
+        print(f"Ошибка входа: {str(e)}")
+
+def show_portfolio_command():
+    global current_user
+    if not current_user:
+        print("Ошибка: сначала выполните login")
+        return
+        
+    parser = argparse.ArgumentParser(description="Просмотр портфеля")
+    parser.add_argument("--base", type=str, default="USD")
+    args = parser.parse_args(sys.argv[2:])
+    
+    try:
+        portfolio = show_portfolio(current_user.user_id, args.base)
+        print(f"Портфель пользователя {current_user.username} (база: {args.base}):")
+        # Логика отображения портфеля
+    except Exception as e:
+        print(f"Ошибка при просмотре портфеля: {str(e)}")
+
+def buy_command():
+    global current_user
+    if not current_user:
+        print("Ошибка: сначала выполните login")
+        return
+        
+    parser = argparse.ArgumentParser(description="Покупка валюты")
+    parser.add_argument("--currency", type=str, required=True)
+    parser.add_argument("--amount", type=float, required=True)
+    args = parser.parse_args(sys.argv[2:])
+    
+    try:
+        buy_currency(current_user.user_id, args.currency, args.amount)
+        print(f"Успешно куплено {args.amount} {args.currency}")
+    except InsufficientFundsError:
+        print("Ошибка: недостаточно средств")
+    except CurrencyNotFoundError:
+        print(f"Ошибка: валюта {args.currency} не найдена")
+    except Exception as e:
+        print(f"Ошибка при покупке: {str(e)}")
+        
+def sell_command():
+    global current_user
+    if not current_user:
+        print("Ошибка: сначала выполните login")
+        return
+        
+    parser = argparse.ArgumentParser(description="Продажа валюты")
+    parser.add_argument("--currency", type=str, required=True)
+    parser.add_argument("--amount", type=float, required=True)
+    args = parser.parse_args(sys.argv[2:])
+    
+    try:
+        sell_currency(current_user.user_id, args.currency, args.amount)
+    except InsufficientFundsError:
+        print(f"Ошибка: недостаточно {args.currency} для продажи")
+    except CurrencyNotFoundError:
+        print(f"Ошибка: валюта {args.currency} не найдена")
+    except Exception as e:
+        print(f"Ошибка при продаже: {str(e)}")
+        
+def get_rate_command():
+    parser = argparse.ArgumentParser(description="Получение курса валют")
+    parser.add_argument("--from", type=str, required=True, help="Исходная валюта")
+    parser.add_argument("--to", type=str, required=True, help="Целевая валюта")
+    args = parser.parse_args(sys.argv[2:])
+    
+    try:
+        rate = get_exchange_rate(args.from_curr, args.to)
+        print(f"Курс {args.from_curr} → {args.to}: {rate}")
+    except CurrencyNotFoundError:
+        print(f"Ошибка: валюта {args.from_curr} или {args.to} не найдена")
+    except Exception as e:
+        print(f"Ошибка при получении курса: {str(e)}")
+
+def main():
+    commands = {
+        "register": register_command,
+        "login": login_command,
+        "show-portfolio": show_portfolio_command,
+        "buy": buy_command,
+        "sell": sell_command,
+        "get-rate": get_rate_command
+    }
+    
+    if len(sys.argv) < 2:
+        print("Укажите команду: register, login, show-portfolio, buy, sell, get-rate")
+        return
+    
+    command_name = sys.argv[1]
+    if command_name in commands:
+        commands[command_name]()
+    else:
+        print(f"Неизвестная команда: {command_name}")
+        
+"""        
 def main():
     parser = argparse.ArgumentParser(description="Платформа для торговли валютами")
     subparsers = parser.add_subparsers(dest="command", help="Доступные команды")
@@ -459,7 +583,7 @@ def main():
                 handle_cli_exception(e, "get-rate")
     except Exception as e:
         handle_cli_exception(e, "get-rate")
-                   
+"""                   
 
 if __name__ == "__main__":
     main()

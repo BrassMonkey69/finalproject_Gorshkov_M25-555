@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from core.models import User, Portfolio, Wallet
+from .models import User, Portfolio, Wallet
 import hashlib
 
 

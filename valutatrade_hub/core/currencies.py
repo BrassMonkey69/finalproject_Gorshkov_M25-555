@@ -15,7 +15,7 @@ class Currency(ABC):
     def __init__(self, name: str, code: str):
         # Валидация имени
         if not name or not isinstance(name, str):
-            raise ValueError("Name must be a non-empty string.")
+            raise ValueError("Имя валюты должно быть непустой строкой.")
         
         self.name = name
 
@@ -25,7 +25,7 @@ class Currency(ABC):
                 len(code) < 2 or len(code) > 5 or
                 ' ' in code or not code.isupper()):
             raise ValueError(
-                "Code must be 2–5 uppercase letters without spaces (e.g., 'USD', 'BTC')."
+                ("Код валюты: 2–5 буквенно‑цифровых символов, без пробелов.")
             )
         self.code = code
 
@@ -42,7 +42,7 @@ class FiatCurrency(Currency):
     def __init__(self, name: str, code: str, issuing_country: str):
         super().__init__(name, code)
         if not issuing_country or not isinstance(issuing_country, str):
-            raise ValueError("Issuing country must be a non-empty string.")
+            raise ValueError("Страна эмиссии должна быть непустой строкой.")
         self.issuing_country = issuing_country
 
 
@@ -58,11 +58,11 @@ class CryptoCurrency(Currency):
     def __init__(self, name: str, code: str, algorithm: str, market_cap: float):
         super().__init__(name, code)
         if not algorithm or not isinstance(algorithm, str):
-            raise ValueError("Algorithm must be a non-empty string.")
+            raise ValueError("Алгоритм должен быть непустой строкой.")
         self.algorithm = algorithm
 
         if market_cap < 0:
-            raise ValueError("Market cap must be non-negative.")
+            raise ValueError("Капитализация не может быть отрицательной.")
         self.market_cap = market_cap
 
     def get_display_info(self) -> str:
@@ -91,12 +91,28 @@ def get_currency(code: str) -> Currency:
     """
     code = code.upper()  # Нормализуем регистр
     if code not in _CURRENCY_REGISTRY:
-        raise CurrencyNotFoundError(f"Currency with code '{code}' not found.")
+        raise CurrencyNotFoundError(f"Валюта с кодом '{code}' не найдена.")
     return _CURRENCY_REGISTRY[code]
 
+def initialize_currencies():
+    """
+    Инициализирует реестр предустановленных валют.
+    Вызывается при старте приложения.
+    """
+    # Фиатные валюты
+    register_currency(FiatCurrency("US Dollar", "USD", "United States"))
+    register_currency(FiatCurrency("Euro", "EUR", "Eurozone"))
+    register_currency(FiatCurrency("British Pound", "GBP", "United Kingdom"))
+    register_currency(FiatCurrency("Japanese Yen", "JPY", "Japan"))
 
 
+    # Криптовалюты
+    register_currency(CryptoCurrency("Bitcoin", "BTC", "SHA-256", 1.12e12))
+    register_currency(CryptoCurrency("Ethereum", "ETH", "Ethash", 4.5e11))
+    register_currency(CryptoCurrency("Ripple", "XRP", "RPCA", 2.0e10))
+    register_currency(CryptoCurrency("Litecoin", "LTC", "Scrypt", 6.0e9))
 
+"""
 # Пример заполнения реестра (можно вынести в отдельный модуль/конфиг)
 if __name__ == "__main__":
     # Регистрируем примеры валют
@@ -115,3 +131,4 @@ if __name__ == "__main__":
         get_currency("XYZ")
     except CurrencyNotFoundError as e:
         print(e)
+"""
